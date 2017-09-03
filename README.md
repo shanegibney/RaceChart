@@ -20,6 +20,7 @@ Data obtained by permission from [howdidyouswim.com](http://howdidyouswim.com/)
 * Possibly chart to indicate progress through season.
   * Display difference between swimmers race time and average, and how this changed for each race as season progressed.
 * Ability to view data and graph by swimmer.
+* Apply same display to previous years' data.
 
 #### Smaller Features:
 * Improve UI of sort buttons
