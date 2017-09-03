@@ -1,6 +1,6 @@
 # D3 v4 Race Chart
 
-[gh-pages(https://shanegibney.github.io/d3-v4-Basic-Pie-Chart/)
+Running on [gh-pages](https://shanegibney.github.io/RaceChart/)
 
 # To do:
 
