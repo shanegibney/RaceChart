@@ -186,19 +186,39 @@
         left: 80
       },
       margin2 = {
-        top: 450,
-        right: 50,
+        top: 430,
+        right: 20,
         bottom: 30,
-        left: 80
+        left: 40
       },
       width = 1400 - margin.left - margin.right,
-      height = 600 - margin.top - margin.bottom,
-      height2 = 520 - margin2.top - margin2.bottom;
+      height = 600 - margin.top - margin.bottom;
+    height2 = height - margin2.top - margin2.bottom;
+
+    // var svg = d3.select("svg"),
+    //   margin = {
+    //     top: 20,
+    //     right: 20,
+    //     bottom: 110,
+    //     left: 40
+    //   },
+    //   margin2 = {
+    //     top: 430,
+    //     right: 20,
+    //     bottom: 30,
+    //     left: 40
+    //   },
+    //   width = +svg.attr("width") - margin.left - margin.right,
+    //   height = +svg.attr("height") - margin.top - margin.bottom,
+    //   height2 = +svg.attr("height") - margin2.top - margin2.bottom;
+
 
     //************************************************************
     //******************* - START DATA SETUP- ********************
     //************************************************************
-
+    // Get the data
+    // var jsonItem = "data.json";
+    // d3.json("dataShortVersion.json", function(error, data) {
     d3.json("dataORG.json", function(error, data) {
       // d3.json("data.json", function(error, data) {
       if (error) throw error;
@@ -243,28 +263,13 @@
         .range([0, width])
         .padding([0.2]);
 
-      // x2 for brush and zoom
-      var x2 = d3.scaleBand()
-        .domain(data.map(function(d) {
-          return d.name
-        }))
-        .range([0, width])
-        .padding([0.2]);
-
       // temporal y-scale
       var y = d3.scaleTime()
         .domain([parseTime('00:00'), d3.max(data, function(d) {
           return d.clocktime
+          // return d.handicap
         })])
-        .range([height, 0]);
-
-      // note: y4 is used for club bar chart
-      // y5 for brush and zoom
-      var y5 = d3.scaleTime()
-        .domain([parseTime('00:00'), d3.max(data, function(d) {
-          return d.clocktime
-        })])
-        .range([height, 0]);
+        .range([height, 0]); //time must increase from 0 to height else racetime and handicap are inverted!!!
 
       // spacial y-scale (race distance)
       var y1 = d3.scaleLinear()
@@ -313,20 +318,15 @@
 
       // Add groups for main bar chart
       var g0 = svg.append("g")
-        .attr("class", "focus")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       var g1 = svg.append("g")
-        .attr("class", "focus")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       var g2 = svg.append("g")
-        .attr("class", "focus")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      // g3 points on bar chart
       var g3 = svg.append("g")
-        .attr("class", "focus")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       //************************************************************
@@ -335,39 +335,6 @@
 
       // Add the X Axis
       var xAxis = d3.axisBottom(x)
-
-      // for brush and zoom
-      var xAxis2 = d3.axisBottom(x2);
-
-      var yAxis = d3.axisLeft(y)
-        .ticks(7)
-        .tickFormat(d3.timeFormat("%M:%S"));
-
-      var brush = d3.brushX()
-        .extent([
-          [0, 0],
-          [width, height2]
-        ])
-        .on("brush", brushed);
-
-      var zoom = d3.zoom()
-        .scaleExtent([1, Infinity])
-        .translateExtent([
-          [0, 0],
-          [width, height]
-        ])
-        .extent([
-          [0, 0],
-          [width, height]
-        ])
-        .on("zoom", zoomed);
-
-      svg.append("defs").append("clipPath")
-        .attr("id", "clip")
-        .append("rect")
-        .attr("width", width)
-        .attr("height", height);
-
       svg.append("g")
         .attr("class", "x axis")
         // .attr("transform", "translate(0," + height + ")")
@@ -402,11 +369,13 @@
       svg.append("g")
         .attr("class", "axis")
         .attr("transform", "translate(" + (margin.left) + "," + margin.top + ")")
-        .call(yAxis);
-      // .tickFormat(function(d, i) {
-      //   return i * 100
-      // })
-
+        .call(d3.axisLeft(y)
+          .ticks(7)
+          .tickFormat(d3.timeFormat("%M:%S"))
+          // .tickFormat(function(d, i) {
+          //   return i * 100
+          // })
+        );
 
       // text label for the y axis on left
       svg.append("text")
@@ -544,8 +513,6 @@
         .attr("class", "maintooltip")
         .style("opacity", 0);
 
-      g0.attr("clip-path", "url(#clip)")
-
       var newRects0 = g0.selectAll(".bar")
         .data(data)
         .enter();
@@ -611,39 +578,6 @@
         .attr('height', function(d, i) {
           return height - y(d.clocktime)
         });
-
-      //create brush function redraw scatterplot with selection
-      function brushed() {
-        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
-        var s = d3.event.selection || x2.range();
-        x.domain(s.map(x2.invert, x2));
-        focus.selectAll(".message")
-          .attr("cx", function(d) {
-            return x(d.sent_time);
-          })
-          .attr("cy", function(d) {
-            return y(d.messages_sent_in_day);
-          });
-        focus.select(".x-axis").call(xAxis);
-        svg.select(".zoom").call(zoom.transform, d3.zoomIdentity
-          .scale(width / (s[1] - s[0]))
-          .translate(-s[0], 0));
-      }
-
-      function zoomed() {
-        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore zoom-by-brush
-        var t = d3.event.transform;
-        x.domain(t.rescaleX(x2).domain());
-        focus.selectAll(".message")
-          .attr("cx", function(d) {
-            return x(d.sent_time);
-          })
-          .attr("cy", function(d) {
-            return y(d.messages_sent_in_day);
-          });
-        focus.select(".x-axis").call(xAxis);
-        context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
-      }
       //************************************************************
       //********* - END CLOCKTIME BAR CHART - **********************
       //************************************************************
@@ -1007,7 +941,6 @@
         .entries(data);
 
       var category_arcs = d3.pie()
-        .padAngle(.02)
         .value(function(d) {
           return d.value;
         })
@@ -1334,7 +1267,6 @@
       // *****************************************************
       // ****************** - END TABLE - ********************
       // *****************************************************
-
-    }); //closes json get data function
+    });
   </script>
 </body>
