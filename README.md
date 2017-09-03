@@ -2,6 +2,8 @@
 
 Running on [gh-pages](https://shanegibney.github.io/RaceChart/)
 
+Intention is for data to be ready for the 2018 season.
+
 Data obtained by permission from [howdidyouswim.com](http://howdidyouswim.com/)
 
 ## To do:
@@ -32,7 +34,7 @@ Data obtained by permission from [howdidyouswim.com](http://howdidyouswim.com/)
 
 #### Issues:
 
-* How to amalgamated data from many races without a database. Current data is by race, but home page chart would need to pull data from many races and merge it. This process needs to be efficient.
+* How to amalgamate data from many races without a database. Current data is by race, but home page chart would need to pull data from many races and merge it. This process needs to be efficient. If data could be pulled from an API this would greatly improve things.
 
 <img width="1436" alt="screen shot 2017-09-03 at 16 40 35" src="https://user-images.githubusercontent.com/17167992/30004431-eb7fb13e-90c6-11e7-8119-1e65e3dc73c3.png">
 
