@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  table {
+    width: 80%;
+    border-collapse: collapse;
+    /*center align table*/
+    margin: 0px auto;
+  }
+  /* Zebra striping */
+
+  tr:nth-of-type(odd) {
+    background: #eee;
+  }
+
+  th {
+    background: #333;
+    color: white;
+    font-weight: bold;
+    cursor: s-resize;
+    background-repeat: no-repeat;
+    background-position: 3% center;
+  }
+
+  td,
+  th {
+    padding: 6px;
+    border: 1px solid #ccc;
+    text-align: left;
+  }
+
+  th.des:after {
+    content: "\21E3";
+  }
+
+  th.aes:after {
+    content: "\21E1";
+  }
+
+  .radio {
+    font-weight: bold;
+  }
+
+  .clocktime-radio {
+    /*color: white;*/
+    /*background-color: gray;*/
+    /*border-radius: 5px;*/
+    /*border-top-left-radius: 1em;*/
+    /*border-bottom-left-radius: 1em;*/
+  }
+
+  .racetime-radio {
+    /*text-align: left;*/
+    /*color: white;*/
+    /*background-color: salmon;*/
+    /*border-radius: 5px;*/
+  }
+
+  .handicap-radio {
+    /*color: white;*/
+    /*background-color: blue;*/
+    /*border-radius: 5px;*/
+    /*border-top-right-radius: 1em;*/
+    /*border-bottom-right-radius: 1em;*/
+  }
+  /*.area {
+    fill: steelblue;
+    clip-path: url(#clip);
+  }
+
+  .zoom {
+    cursor: move;
+    fill: none;
+    pointer-events: all;
+  }*/
+
+  .center_it {
+    text-align: center;
+  }
+
+  .table_center {
+    text-align: center;
+  }
+  /*.div_width {
+    width: 1500;
+  }*/
+
+  .container {
+    margin-left: 0px;
+  }
+
+  .legend:hover {
+    fill: blue;
+  }
+  /* tooltip for main bar chart */
+
+  div.maintooltip {
+    position: absolute;
+    text-align: left;
+    width: 120px;
+    height: 20px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  /* tooltip for clubs bar chart */
+
+  div.clubtooltip {
+    position: absolute;
+    text-align: left;
+    width: 120px;
+    height: 140px;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  /*rect:hover {
+    fill: blue;
+  }*/
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" crossorigin="anonymous">
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" crossorigin="anonymous"></script>
+
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div id="raceinfo" class="center_it">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div id="info" class="center_it">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div id="race_graph">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-5">
+        <div id="pie_category">
+          <h4 style="text-align:center;">Categories</h3>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div id="bar_club">
+          <h4 style="text-align:center;">Swimmers by Club</h4>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div id="page-wrap" class="table">
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- <div>
+    <select id="selectRace">
+      <option value="one">data.json</option>
+      <option value="two">dataORG.json</option>
+    </select>
+  </div> -->
+
+  <!-- load the d3.js library -->
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script>
+    // set the dimensions and margins of the graph
+    var margin = {
+        top: 70,
+        right: 50,
+        bottom: 100,
+        left: 80
+      },
+      margin2 = {
+        top: 450,
+        right: 50,
+        bottom: 30,
+        left: 80
+      },
+      width = 1400 - margin.left - margin.right,
+      height = 600 - margin.top - margin.bottom,
+      height2 = 520 - margin2.top - margin2.bottom;
+
+    //************************************************************
+    //******************* - START DATA SETUP- ********************
+    //************************************************************
+
+    d3.json("dataORG.json", function(error, data) {
+      // d3.json("data.json", function(error, data) {
+      if (error) throw error;
+
+      // parse the time, minute:second
+      var parseTime = d3.timeParse("%M:%S");
+      var timeformat = d3.timeFormat("%M:%S")
+      // format the data
+      data.forEach(function(d) {
+        d.racetime = parseTime(d.racetime);
+        d.handicap = parseTime(d.handicap);
+        d.clocktime = parseTime(d.clocktime);
+        d.place = +d.place;
+        d.points = +d.points;
+        d.raceplace = +d.raceplace;
+        d.timeplace = +d.timeplace;
+      });
+
+      var title = data[0].info;
+
+      // // color scale based on handicaps
+      // var x1 = d3.scaleTime()
+      //   .domain([parseTime('00:00'), d3.max(data, function(d) {
+      //     return d.handicap
+      //   })])
+      //   .range(['gray', 'blue']);
+
+      //************************************************************
+      //******************* - END DATA SETUP - *********************
+      //************************************************************
+
+
+      //************************************************************
+      //******************* - START SCALES SETUP - *****************
+      //************************************************************
+
+      // set the domains and ranges
+      var x = d3.scaleBand()
+        .domain(data.map(function(d) {
+          return d.name
+        }))
+        .range([0, width])
+        .padding([0.2]);
+
+      // x2 for brush and zoom
+      var x2 = d3.scaleBand()
+        .domain(data.map(function(d) {
+          return d.name
+        }))
+        .range([0, width])
+        .padding([0.2]);
+
+      // temporal y-scale
+      var y = d3.scaleTime()
+        .domain([parseTime('00:00'), d3.max(data, function(d) {
+          return d.clocktime
+        })])
+        .range([height, 0]);
+
+      // note: y4 is used for club bar chart
+      // y5 for brush and zoom
+      var y5 = d3.scaleTime()
+        .domain([parseTime('00:00'), d3.max(data, function(d) {
+          return d.clocktime
+        })])
+        .range([height, 0]);
+
+      // spacial y-scale (race distance)
+      var y1 = d3.scaleLinear()
+        .domain([0, 1200]) //race distance
+        .range([height, 0]);
+
+      // points y-scale
+      var y2 = d3.scaleLinear()
+        .domain([0, 10]) //points awarded
+        .range([height, 0]);
+
+      // category y-scale
+      var y3 = d3.scaleLinear()
+        .domain([0, d3.max(data, function(d) {
+          return d.category
+        })]) //points awarded
+        .range([height, 0]);
+
+      //************************************************************
+      //******************* - END SCALES SETUP - *******************
+      //************************************************************
+
+      //************************************************************
+      //******************* - START GENERAL SETUP - ****************
+      //************************************************************
+
+      // Add page title
+      var raceinfo = d3.select("#raceinfo")
+        .append("text")
+        .attr("x", 0)
+        .attr("y", 0)
+        .style("font-weight", "bold")
+        .style("font-size", "30px")
+        .text(title);
+
+      // Add main graph svg
+      var svg = d3.select("#race_graph")
+        .data(data)
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+      //************************************************************
+      //******************* - END GENERAL SETUP - ******************
+      //************************************************************
+
+      // Add groups for main bar chart
+      var g0 = svg.append("g")
+        .attr("class", "focus")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var g1 = svg.append("g")
+        .attr("class", "focus")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      var g2 = svg.append("g")
+        .attr("class", "focus")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // g3 points on bar chart
+      var g3 = svg.append("g")
+        .attr("class", "focus")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      //************************************************************
+      //******************* - START AXES SETUP - *******************
+      //************************************************************
+
+      // Add the X Axis
+      var xAxis = d3.axisBottom(x)
+
+      // for brush and zoom
+      var xAxis2 = d3.axisBottom(x2);
+
+      var yAxis = d3.axisLeft(y)
+        .ticks(7)
+        .tickFormat(d3.timeFormat("%M:%S"));
+
+      var brush = d3.brushX()
+        .extent([
+          [0, 0],
+          [width, height2]
+        ])
+        .on("brush", brushed);
+
+      var zoom = d3.zoom()
+        .scaleExtent([1, Infinity])
+        .translateExtent([
+          [0, 0],
+          [width, height]
+        ])
+        .extent([
+          [0, 0],
+          [width, height]
+        ])
+        .on("zoom", zoomed);
+
+      svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", width)
+        .attr("height", height);
+
+      svg.append("g")
+        .attr("class", "x axis")
+        // .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(" + (margin.left) + "," + (height + margin.top) + ")")
+        .call(xAxis)
+        // .attr("transform", "translate(" + width - margin.left + "," + (height - 100) + ")")
+        .selectAll("text")
+        .attr("transform", "translate(-100,0)")
+        .style("text-anchor", "end")
+        .style("font", "7px times")
+        .attr("class", function(d, i) {
+          return "groupText" + i + " xAxisText"
+        })
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        // .attr("transform", "rotate(-75)");
+        .attr("transform", "rotate(-75)");
+      // .on("mouseover", function(d) {
+      //   return tooltip.style("visibility", "visible")
+      // })
+
+      // text label for the x axis
+      svg.append("text")
+        .attr("class", "blah")
+        .attr("transform",
+          "translate(" + (width / 2) + " ," + (height + margin.bottom + margin.top - 10) + ")")
+        .style("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text("Open Sea Swimmers");
+
+      // Add the y axis on left
+      svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(" + (margin.left) + "," + margin.top + ")")
+        .call(yAxis);
+      // .tickFormat(function(d, i) {
+      //   return i * 100
+      // })
+
+
+      // text label for the y axis on left
+      svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 5)
+        .attr("x", 0 - ((height / 2) + margin.top))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text("Time in minutes");
+
+      // Add the left y axis on right
+      svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate( 1460, " + margin.top + ")")
+        .call(d3.axisRight(y2)
+          .ticks(11)
+        );
+
+      // text label for the y axis on right
+      svg.append("text")
+        .attr("transform", "rotate(90)")
+        .attr("y", 0 - margin.right - margin.left - width)
+        .attr("x", (height / 2) + margin.top)
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text("Points Awarded");
+
+      // var tooltip = d3.select("#info")
+      //   .append("div")
+      //   .style("position", "absolute")
+      //   .style("z-index", "10")
+      //   .style("visibility", "hidden");
+
+      //************************************************************
+      //********************* - END AXES SETUP - *******************
+      //************************************************************
+
+      //************************************************************
+      //**************** - START LEGENDS - *************************
+      //************************************************************
+
+      // add legend group
+      svg.append("g")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .attr("text-anchor", "end")
+        // .attr("class", "legend")
+        .selectAll("g")
+        // .attr("transform", function(d, i) {
+        //   return "translate(0," + i * 20 + ")";
+        // });
+        .attr("transform", "translate(100, 100)");
+
+      // add legend rect gray
+      svg.append("rect")
+        .attr("class", "legend")
+        .attr("x", 600)
+        .attr("y", 30)
+        .attr("rx", "5px")
+        .attr("width", 80)
+        .attr("height", 20)
+        .on("click", function() {
+          value = "clock";
+          change(value);
+        })
+        .attr("stroke", "darkgray")
+        .attr("fill", "gray");
+
+      // add legend text clocktime
+      svg.append("text")
+        .attr("x", 510)
+        .attr("y", 40)
+        .attr("dy", "0.32em")
+        .style("font-weight", "bold")
+        .text("clock time: ");
+
+      // add legend rect salmon
+      svg.append("rect")
+        .attr("class", "legend")
+        .attr("x", 800)
+        .attr("y", 30)
+        .attr("rx", "5px")
+        .attr("width", 80)
+        .attr("height", 20)
+        .on("click", function() {
+          value = "race";
+          change(value);
+        })
+        .attr("stroke", "darkgray")
+        .attr("fill", "salmon");
+
+      // add legend text race time
+      svg.append("text")
+        .attr("x", 710)
+        .attr("y", 40)
+        .attr("dy", "0.32em")
+        .style("font-weight", "bold")
+        .text("race time: ");
+
+      // add legend rect blue
+      svg.append("rect")
+        .attr("class", "legend")
+        .attr("x", 1000)
+        .attr("y", 30)
+        .attr("rx", "5px")
+        .attr("width", 80)
+        .attr("height", 20)
+        .on("click", function() {
+          //sending any value other than 'clock' or 'race' should sort on handicap
+          value = "handicap";
+          change(value);
+        })
+        .attr("stroke", "darkgray")
+        .attr("fill", "lightblue");
+
+      // add legend text handicap
+      svg.append("text")
+        .attr("x", 910)
+        .attr("y", 40)
+        .attr("dy", "0.32em")
+        .style("font-weight", "bold")
+        .text("handicap: ");
+
+      //************************************************************
+      //****************** - END LEGENDS - *************************
+      //************************************************************
+
+      //************************************************************
+      //********* - START CLOCKTIME BAR CHART - ********************
+      //************************************************************
+      //Define the div for the tooltip
+      var div = d3.select("body").append("div")
+        .attr("class", "maintooltip")
+        .style("opacity", 0);
+
+      g0.attr("clip-path", "url(#clip)")
+
+      var newRects0 = g0.selectAll(".bar")
+        .data(data)
+        .enter();
+
+      // Note: .point(d.points) is the y coordinate of rect
+      newRects0.append('rect')
+        .attr('x', function(d, i) {
+          return x(d.name);
+        })
+        // .attr('opacity', 0.33)
+        .attr('width', x.bandwidth())
+        .attr('y', height)
+        .attr('height', 0)
+        .attr("transform", "translate(0,0)")
+        .style('fill', 'gray')
+        .attr("class", function(d, i) {
+          return "group" + i + " bar"
+        })
+        .on("mouseover", function(d, i, node) { //this is repeated should be in a function
+          div.transition()
+            .duration(200)
+            .style("opacity", .85);
+          div.html(d.name + "(" + d.category + ")</br><span style=text-align: left;><strong>Club:</strong> " + d.club + "</br><strong>Race Place:</strong> " + d.raceplace + "</br><strong>Time place:</strong> " + d.timeplace +
+              "</br><strong>Points:</strong> " + d.points + "</br><strong>Race time:</strong> " + timeformat(d.racetime) + "</br><strong>Clock time:</strong> " + timeformat(d.clocktime) + "</br><strong>Handicap:</strong> " + timeformat(d.handicap) +
+              "</span>")
+            .style("left", (d3.event.pageX + x.bandwidth() + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+          d3.selectAll(".bar").transition()
+            .style("opacity", 0.15);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "lightgray")
+            .style("font-weight", "100"); //all groups given opacity 0.15
+          d3.selectAll(".groupText" + i)
+            .transition()
+            .style("font-weight", "900")
+            .style("fill", "black"); //give opacity 1 to group on which it hovers.
+          d3.selectAll(".group" + i)
+            .transition()
+            .style("opacity", 1)
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "visible");
+        })
+        .on("mouseout", function(d) {
+          div.transition()
+            .duration(500)
+            .style("opacity", 0);
+          d3.selectAll(".bar").transition()
+            .style("opacity", 1);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "black")
+            .style("font-weight", "normal")
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "hidden");
+        })
+        .transition()
+        .duration(100)
+        .delay(function(d, i) {
+          return i * 15
+        })
+        .attr('y', function(d, i) {
+          return y(d.clocktime);
+        })
+        .attr('height', function(d, i) {
+          return height - y(d.clocktime)
+        });
+
+      //create brush function redraw scatterplot with selection
+      function brushed() {
+        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") return; // ignore brush-by-zoom
+        var s = d3.event.selection || x2.range();
+        x.domain(s.map(x2.invert, x2));
+        focus.selectAll(".message")
+          .attr("cx", function(d) {
+            return x(d.sent_time);
+          })
+          .attr("cy", function(d) {
+            return y(d.messages_sent_in_day);
+          });
+        focus.select(".x-axis").call(xAxis);
+        svg.select(".zoom").call(zoom.transform, d3.zoomIdentity
+          .scale(width / (s[1] - s[0]))
+          .translate(-s[0], 0));
+      }
+
+      function zoomed() {
+        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") return; // ignore zoom-by-brush
+        var t = d3.event.transform;
+        x.domain(t.rescaleX(x2).domain());
+        focus.selectAll(".message")
+          .attr("cx", function(d) {
+            return x(d.sent_time);
+          })
+          .attr("cy", function(d) {
+            return y(d.messages_sent_in_day);
+          });
+        focus.select(".x-axis").call(xAxis);
+        context.select(".brush").call(brush.move, x.range().map(t.invertX, t));
+      }
+      //************************************************************
+      //********* - END CLOCKTIME BAR CHART - **********************
+      //************************************************************
+
+      //************************************************************
+      //********* - START RACETIME BAR CHART - *********************
+      //************************************************************
+
+      var newRects1 = g1.selectAll(".bar")
+        .data(data)
+        .enter();
+
+      // Note: y2(d.points) is the y coordinate of rect
+      newRects1.append('rect')
+        .attr("class", function(d, i) {
+          return "group" + i + " bar"
+        })
+        .on("mouseover", function(d, i, node) { //this is repeated should be in a function
+          div.transition()
+            .duration(200)
+            .style("opacity", .85);
+          div.html(d.name + "(" + d.category + ")</br><span style=text-align: left;><strong>Club:</strong> " + d.club + "</br><strong>Race Place:</strong> " + d.raceplace + "</br><strong>Time place:</strong> " + d.timeplace +
+              "</br><strong>Points:</strong> " + d.points + "</br><strong>Race time:</strong> " + timeformat(d.racetime) + "</br><strong>Clock time:</strong> " + timeformat(d.clocktime) + "</br><strong>Handicap:</strong> " + timeformat(d.handicap) +
+              "</span>")
+            .style("left", (d3.event.pageX + x.bandwidth() + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+          d3.selectAll(".bar").transition()
+            .style("opacity", 0.15);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "lightgray")
+            .style("font-weight", "100"); //all groups given opacity 0.15
+          d3.selectAll(".groupText" + i)
+            .transition()
+            .style("font-weight", "900")
+            .style("fill", "black"); //give opacity 1 to group on which it hovers.
+          d3.selectAll(".group" + i)
+            .transition()
+            .style("opacity", 1)
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "visible");
+        })
+        .on("mouseout", function(d) {
+          div.transition()
+            .duration(500)
+            .style("opacity", 0);
+          d3.selectAll(".bar").transition()
+            .style("opacity", 1);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "black")
+            .style("font-weight", "normal")
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "hidden");
+        })
+        .transition()
+        .delay(100)
+        .attr('x', function(d, i) {
+          return x(d.name);
+        })
+        .attr('width', x.bandwidth())
+        .attr("transform", "translate(0,0)")
+        .attr('y', height)
+        .attr('height', 0)
+        .style('fill', 'salmon')
+        .transition()
+        .duration(100)
+        .delay(function(d, i) {
+          return i * 15
+        })
+        .attr('y', function(d, i) {
+          return y(d.racetime);
+        })
+        .attr('height', function(d, i) {
+          return height - y(d.racetime)
+        });
+      //************************************************************
+      //********* - END RACETIME BAR CHART - ***********************
+      //************************************************************
+
+      //************************************************************
+      //********* - START HANDICAP BAR CHART - *********************
+      //************************************************************
+      // var newRects2 = rects0.enter();
+      var newRects2 = g2.selectAll(".bar")
+        .data(data)
+        .enter();
+
+      newRects2.append('rect')
+        .attr("class", function(d, i) {
+          return "group" + i + " bar"
+        })
+        .on("mouseover", function(d, i, node) { //this is repeated should be in a function
+          div.transition()
+            .duration(200)
+            .style("opacity", .85);
+          div.html(d.name + "(" + d.category + ")</br><span style=text-align: left;><strong>Club:</strong> " + d.club + "</br><strong>Race Place:</strong> " + d.raceplace + "</br><strong>Time place:</strong> " + d.timeplace +
+              "</br><strong>Points:</strong> " + d.points + "</br><strong>Race time:</strong> " + timeformat(d.racetime) + "</br><strong>Clock time:</strong> " + timeformat(d.clocktime) + "</br><strong>Handicap:</strong> " + timeformat(d.handicap) +
+              "</span>")
+            .style("left", (d3.event.pageX + x.bandwidth() + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+          d3.selectAll(".bar").transition()
+            .style("opacity", 0.15);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "lightgray")
+            .style("font-weight", "100"); //all groups given opacity 0.15
+          d3.selectAll(".groupText" + i)
+            .transition()
+            .style("font-weight", "900")
+            .style("fill", "black"); //give opacity 1 to group on which it hovers.
+          d3.selectAll(".group" + i)
+            .transition()
+            .style("opacity", 1)
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "visible");
+        })
+        .on("mouseout", function(d) {
+          div.transition()
+            .duration(500)
+            .style("opacity", 0);
+          d3.selectAll(".bar").transition()
+            .style("opacity", 1);
+          d3.selectAll(".xAxisText").transition()
+            .style("fill", "black")
+            .style("font-weight", "normal")
+            .style("visibility", "visible");
+          // return tooltip.style("visibility", "hidden");
+        })
+        .transition()
+        .delay(200)
+        .attr('x', function(d, i) {
+          return x(d.name);
+        })
+        .attr('y', function(d, i) {
+          return height
+        })
+        // .attr('width', 5)
+        .attr('width', x.bandwidth())
+        .attr('height', 0)
+        .attr("transform", "translate(0,0)")
+        .style('fill', 'lightblue')
+        .transition()
+        .duration(100)
+        .delay(function(d, i) {
+          return i * 15
+        })
+        .attr('y', function(d, i) {
+          return y(d.handicap);
+        })
+        .attr('height', function(d, i) {
+          return height - y(d.handicap)
+        });
+
+      //************************************************************
+      //********** - END HANDICAP BAR CHART - **********************
+      //************************************************************
+
+      //************************************************************
+      //******* - START POINTS BAR CHART - *************************
+      //************************************************************
+
+      // var newRects3 = rects0.enter();
+      var newRects3 = g3.selectAll(".bar")
+        .data(data)
+        .enter();
+
+      // Note: y2(d.points) is the y coordinate of rect
+      newRects3.append('circle')
+        .on("mouseover", function(d) { //this is repeated should be in a function
+          return tooltip
+            .style("visibility", "visible")
+            .html("<span style= font-size:20px; display: block; border-left:1px solid #fff; text - align: center; > " + "<u><strong>" + d.name + "</strong></u>" + "(" + d.category + ")" + ", " + d.club +
+              "        <strong>Race place:</strong> " +
+              d.raceplace +
+              " <strong>Time place:</strong> " + d.timeplace +
+              " <strong>Points:</strong > " + d.points + " <strong>Race time:</strong> " + timeformat(d.racetime) + "<strong> Clock time: </strong>" + timeformat(d.clocktime) + " <strong>Handicap:</strong> " + timeformat(d.handicap) +
+              "</span>"
+            )
+        })
+        .on("mouseout", function(d) {
+          return tooltip.style("visibility", "hidden");
+        })
+        .attr("opacity", 0.0)
+        // .transition()
+        // .delay(1000)
+        .attr("class", "bar")
+        .attr("transform", "translate(0, 0)")
+        .attr("cx", function(d, i) {
+          return x(d.name);
+        })
+        .attr("cy", function(d, i) {
+          return y2(d.points);
+        })
+        .attr("r", 2.5)
+        // .attr("width", 5)
+        .attr('width', x.bandwidth())
+        // .attr('opacity', 0.0)
+        .style("fill", "red")
+        // .transition()
+        // .duration(3000)
+        // .delay(5000)
+        .attr("opacity", 0.8);
+
+      //************************************************************
+      //********* - END POINTS BAR CHART - *************************
+      //************************************************************
+
+      //************************************************************
+      //*************** - START Race Simulation ********************
+      //************************************************************
+      // var circles = svg.selectAll('circle')
+      //   .data(data);
+      //
+      // var newCircles = circles.enter();
+      // newCircles.append('circle')
+      //   .attr('cx', function(d, i) {
+      //     return x(d.name) + margin.top;
+      //   })
+      //   .attr('cy', function(d, i) {
+      //     return y1(0)
+      //   })
+      //   .attr('r', 5)
+      //   .attr('stroke', 'gray')
+      //   .attr('stroke-width', 1)
+      //   .attr("id", function(d, i) {
+      //     return "circle" + i
+      //   })
+      //   .style('fill', "gray")
+      //   .on("mouseover", function(d) { //this repeated
+      //     return tooltip
+      //       .style("visibility", "visible")
+      //       .html("<span style='font-size:20px'; display: block; border:'2px solid black'; text-align:center;>" + d.name + "(" + d.category + ")" + ", " + d.club + " <strong>Place:</strong> " + d.timeplace + " <strong>Points:</strong> " + d.points +
+      //         " <strong>Race time:</strong> " + timeformat(d.racetime) +
+      //         " <strong>Handicap:</strong> " +
+      //         timeformat(d.handicap) + "</span>")
+      //     // .style('color', 'red')
+      //     // .text(d.name)
+      //   })
+      //   .on("mouseout", function(d) {
+      //     return tooltip.style("visibility", "hidden");
+      //   })
+      //   .attr("transform", "translate(-47, 0)")
+      //   .style('opacity', 0.8)
+      //   .transition()
+      //   .ease(d3.easeLinear)
+      //   .duration(function(d, i) {
+      //     return y(d.racetime) * 30
+      //   })
+      //   .delay(function(d, i) {
+      //     // console.log("delay: " + d.handicap);
+      //     return y(d.handicap) * 30
+      //   })
+      //   .attr('cy', function(d, i) {
+      //     return y1(1200)
+      //   })
+      //   .style('fill', function(d, i) {
+      //     return x1(d.handicap)
+      //   })
+      //   .transition()
+      //   .delay(5000)
+      //   .duration(5000)
+      //   .style('opacity', 0);
+
+      //************************************************************
+      //***************** - END Race Simulation ********************
+      //************************************************************
+
+
+      // var color = d3.interpolate("red", "blue");
+      //
+      // g.append("path")
+      //   .attr("d", arc)
+      //   // .style("fill", "gray")
+      //   .attr("fill", function(d, i) {
+      //     // return d3.interpolateCool(Math.random())
+      //     return color(i / 5)
+      //   })
+      //   .attr("stroke", "lightsteelblue");
+
+      //   // .style("fill", function(d) {
+      //   //   return color(d.data.key);
+      //   // });
+
+      // newBlock.append("path")
+      //    .attr("d", arc)
+      //    .attr("id", function(d, i) { return "arc-" + i })
+      //    .attr("stroke", "gray")
+      //    .attr("fill", function(d,i){ return d3.interpolateCool(Math.random()) })
+
+
+      // d3.select("#selectRace").on("change", selectchange)
+      //
+      // function selectchange() {
+      //   // console.log(this.options[this.selectedIndex].value);
+      //   var selectValue = this.options[this.selectedIndex].value
+      //   if (selectValue == "one") {
+      //     jsonItem = "data.json";
+      //   } else {
+      //     jsonItem = "dataORG.json";
+      //   }
+      //   console.log("jsonItem = " + jsonItem);
+      // }
+
+      // *****************************************************
+      // ****************** - START SORTING - ****************
+      // *****************************************************
+      d3.selectAll("input[name='stack']").on("change", change); // read from input radio buttons
+
+      function change() {
+
+        var x0 = x.domain(data.sort(this.value == "clock" ?
+            (function(a, b) {
+              return (b.raceplace - a.raceplace) * -1; // * -1 reverses order
+            }) : (this.value == "race") ?
+            (function(a, b) {
+              return (b.timeplace - a.timeplace) * -1;
+            }) : (function(a, b) {
+              return (new Date(b.handicap) - new Date(a.handicap)) * -1;
+            })).map(function(d) {
+            return d.name;
+          }))
+          .copy();
+
+        var transition = svg.transition().duration(750);
+        // delay = function(d, i) {
+        //   return i * 0;
+        // };
+
+        transition.selectAll(".bar")
+          // .delay(delay)
+          .delay(0)
+          .attr("x", function(d) {
+            return x0(d.name);
+          });
+
+        transition.select(".x.axis") //selects the x-axis
+          .call(xAxis)
+          .selectAll("g")
+          .delay(0);
+      }
+
+
+      // *****************************************************
+      // ****************** - END SORTING - ******************
+      // *****************************************************
+
+      // *******************************************************
+      // ****************** - START PIE Chart - ****************
+      // *******************************************************
+      pie_width = 600;
+      pie_height = 400;
+      radius = Math.min(pie_width, pie_height) / 2;
+      var color = ["#2C93E8", "#838690", "#F56C4E", "#A60F2B", "#648C85", "#B3F2C9", "#528C18", "#C3F25C"];
+
+      // Generate an array object on categories as a category
+      var category_count = d3.nest()
+        .key(function(d) {
+          return d.category;
+        })
+        .rollup(function(leaves) {
+          return leaves.length;
+        })
+        .entries(data);
+
+      var category_arcs = d3.pie()
+        .padAngle(.02)
+        .value(function(d) {
+          return d.value;
+        })
+        (category_count);
+
+      var pie = d3.pie()
+        .value(function(d) {
+          return d.category;
+        })(category_arcs);
+
+      var arc = d3.arc()
+        .outerRadius(radius - 40)
+        .innerRadius(40);
+
+      var labelArc = d3.arc()
+        .outerRadius(radius - 40)
+        .innerRadius(40);
+
+      var pie_svg = d3.select("#pie_category")
+        .append("svg")
+        .attr("width", pie_width)
+        .attr("height", pie_height)
+        .append("g")
+        .attr("transform", "translate(" + ((pie_width / 2)) + "," + pie_height / 2 + ")");
+
+      var g = pie_svg.selectAll("arc")
+        .data(category_arcs)
+        .enter().append("g")
+        .attr("class", "arc");
+
+      // category_arcs.forEach(function(element) {
+      //   console.log(element.data.key);
+      // });
+
+      g.append("path")
+        .attr("d", arc)
+        .style("fill", function(d, i) {
+          return color[i];
+        });
+
+      g.append("text")
+        .attr("transform", function(d) {
+          return "translate(" + labelArc.centroid(d) + ")";
+        })
+        .text(function(d) {
+          return d.data.key + " = " + d.value;
+        })
+        .style("fill", "white");
+
+      // *****************************************************
+      // ****************** - END PIE Chart - ****************
+      // *****************************************************
+
+      // *****************************************************
+      // ************ - START CLUB BAR Chart - ***************
+      // *****************************************************
+
+      var club_width = 800;
+      var club_height = 400
+      var club_margin = {
+        top: 70,
+        right: 50,
+        bottom: 150,
+        left: 40
+      }
+      var club_graph_height = club_height - club_margin.top - club_margin.bottom;
+      var club_graph_width = club_width - club_margin.left - club_margin.right;
+
+      //Define the div for the tooltip
+      var div = d3.select("body").append("div")
+        .attr("class", "clubtooltip")
+        .style("opacity", 0);
+
+      // prepare data: count number for each club
+      var club_count = d3.nest()
+        .key(function(d) {
+          return d.club;
+        })
+        .rollup(function(leaves) {
+          return leaves.length;
+        })
+        .entries(data);
+
+      // club_count.forEach(function(element) {
+      //   console.log(element);
+      // });
+
+      // set scales for club bar chart, range and domain
+
+      // x Axis for clubs bar chart
+      var x1 = d3.scaleBand()
+        .domain(club_count.map(function(d) {
+          // console.log(d.key);//d.key is club names
+          return d.key
+        }))
+        .range([0, club_graph_width])
+        .padding([0.5]);
+
+      //  y-scale for clubs bar chart
+      var y4 = d3.scaleLinear()
+        .domain([0, d3.max(club_count, function(d) {
+          return d.value
+        })])
+        .range([club_graph_height, 0]);
+
+      // var category_arcs = d3.pie()
+      //   .value(function(d) {
+      //     return d.value;
+      //   })
+      //   (category_count);
+
+      var clubs_svg = d3.selectAll("#bar_club")
+        .data(club_count)
+        .append("svg")
+        .attr("width", club_width)
+        .attr("height", club_height)
+        .append("g")
+        .attr("transform", "translate(0,0)");
+      // .enter();
+
+      // Add the X Club Axis
+      // var xClubAxis = d3.axisBottom(x1)
+      clubs_svg.append("g")
+        .attr("class", "club_axis")
+        // .attr("transform", "translate(0," + height + ")")
+        .attr("transform", "translate(" + club_margin.left + "," + (club_margin.top + club_graph_height) + ")")
+        // .call(xClubAxis)
+        .call(d3.axisBottom(x1).ticks(24))
+        // .attr("transform", "translate(" + width - margin.left + "," + (height - 100) + ")")
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .style("font", "15px times")
+        // .attr("class", function(d, i) {
+        //   return "groupText" + i + " xAxisText"
+        // })
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-75)");
+
+      // Add clubs y axis
+      clubs_svg.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(" + club_margin.left + "," + club_margin.top + ")")
+        .call(d3.axisLeft(y4)
+          .ticks(14)
+        );
+
+      // text label clubs y axis
+      clubs_svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("x", 0 - (club_graph_height / 2) - club_margin.top)
+        .attr("y", "1em")
+        .attr("dy", "-0.3em")
+        .style("text-anchor", "middle")
+        .style("font-weight", "bold")
+        .text("number");
+
+      // text label clubs x axis // not needed this label
+      // clubs_svg.append("text")
+      //   // .attr("transform", "rotate(-90)")
+      //   .attr("x", (club_graph_width / 2) + club_margin.left)
+      //   .attr("y", club_graph_height + club_margin.top + club_margin.bottom)
+      //   .attr("dy", "-0.3em")
+      //   .style("text-anchor", "middle")
+      //   .style("font-weight", "bold")
+      //   .text("Clubs");
+
+      var club_rects = clubs_svg.selectAll('rect')
+        .data(club_count)
+        .enter()
+        .append('rect')
+        .attr("class", "clubs")
+        .on("mouseover", function(d) {
+          div.transition()
+            .duration(200)
+            .style("opacity", .9);
+          div.html(d.key + " " + d.value)
+            .style("left", (d3.event.pageX + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+          div.transition()
+            .duration(500)
+            .style("opacity", 0);
+        })
+        .attr("transform", "translate(" + club_margin.left + "," + club_margin.top + ")")
+
+        // .attr("class", function(d, i) {
+        //   return "group" + i + " bar"
+        // })
+        // .on("mouseover", function(d, i, node) {
+        //   d3.selectAll(".bar").transition()
+        //     .style("opacity", 0.15);
+        //   d3.selectAll(".xAxisText").transition()
+        //     .style("fill", "lightgray")
+        //   d3.selectAll(".groupText" + i)
+        //     .transition()
+        //     .style("font-weight", "900")
+        //     .style("fill", "black");
+        //   d3.selectAll(".group" + i)
+        //     .transition()
+        //     .style("opacity", 1);
+        //   return tooltip
+        //     .style("visibility", "visible")
+        //     .html("<span style= font-size:20px; display: block; border-left:1px solid #fff; text - align: center; > " + "<u><strong>" + d.name + "</strong></u>" + "(" + d.category + ")" + ", " + d.club + "        <strong>Race place:</strong> " +
+        //       d.raceplace +
+        //       " <strong>Time place:</strong> " + d.timeplace +
+        //       " <strong>Points:</strong > " + d.points + " <strong>Race time:</strong> " + timeformat(d.racetime) + "<strong> Clock time: </strong>" + timeformat(d.clocktime) + " <strong>Handicap:</strong> " + timeformat(d.handicap) +
+        //       "</span>"
+        //     );
+        // })
+        // .on("mouseout", function(d) {
+        //   d3.selectAll(".bar").transition()
+        //     .style("opacity", 1);
+        //   d3.selectAll(".xAxisText").transition()
+        //     .style("fill", "black")
+        //     .style("font-weight", "normal");
+        //   return tooltip.style("visibility", "hidden");
+        // })
+        // .transition()
+        // .delay(2000)
+        .attr('x', function(d, i) {
+          return x1(d.key); //d.key is club name
+        })
+        .attr('y', function(d, i) {
+          return club_graph_height
+        })
+        // .attr('width', 10)
+        .attr("width", x1.bandwidth())
+        .attr('height', 0)
+        // .attr("transform", "translate(-75,-100)")
+        .style('fill', 'lightblue')
+        .transition()
+        .duration(1000)
+        .delay(function(d, i) {
+          return i * 15
+        })
+        .attr('y', function(d, i) {
+          // console.log("iteration: " + i)
+          return y4(d.value);
+        })
+        .attr('height', function(d, i) {
+          // console.log("y4(d.value): " + y4(d.value) + "->" + d.key + "(" + +")");
+          return club_graph_height - y4(d.value);
+        });
+
+      // *****************************************************
+      // ************** - END CLUB BAR Chart - ***************
+      // *****************************************************
+
+      // *****************************************************
+      // ****************** - START TABLE - ******************
+      // *****************************************************
+
+      var sortAscending = true;
+      var table = d3.select('#page-wrap').append('table');
+      var titles = d3.keys(data[0]);
+      var titles = ["raceplace", "name", "club", "clocktime", "category", "handicap", "racetime", "timeplace", "points"]
+      var headers = table.append('thead').append('tr')
+        .selectAll('th')
+        .data(titles).enter()
+        .append('th')
+        .text(function(d) {
+          return d
+        })
+        .on('click', function(d) {
+          headers.attr('class', 'header');
+          if (d == "name" || d == "club" || d == "category") { //these keys sort alphabetically
+            // sorting alphabetically");
+            if (sortAscending) {
+              rows.sort(function(a, b) {
+                return d3.ascending(a[d], b[d]);
+              });
+              sortAscending = false;
+              this.className = 'aes';
+            } else {
+              rows.sort(function(a, b) {
+                return d3.descending(a[d], b[d]);
+              });
+              sortAscending = true;
+              this.className = 'des';
+            }
+          } else {
+            //all other keys sort numerically including time
+            if (sortAscending) {
+              rows.sort(function(a, b) {
+                return b[d] - a[d];
+              });
+              sortAscending = false;
+              this.className = 'aes';
+            } else {
+              rows.sort(function(a, b) {
+                return a[d] - b[d];
+              });
+              sortAscending = true;
+              this.className = 'des';
+            }
+          }
+        });
+
+      var rows = table.append('tbody').selectAll('tr')
+        .data(data).enter()
+        .append('tr');
+      rows.selectAll('td')
+        .data(function(d) {
+          return titles.map(function(key, i) {
+            return {
+              'value': d[key],
+              'name': d
+            }
+          })
+        }).enter()
+        .append('td')
+        .attr('data-th', function(d) {
+          return d.name;
+        })
+        .text(function(d) {
+          if (typeof(d.value) == "object") {
+            return timeformat(d.value)
+          } else {
+            return d.value
+          }
+        });
+      // *****************************************************
+      // ****************** - END TABLE - ********************
+      // *****************************************************
+
+    }); //closes json get data function
+  </script>
+</body>
